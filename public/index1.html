@@ -35,7 +35,7 @@
         console.log("Micrófono capturado");
 
         // Conectar al servidor WebSocket
-        ws = new WebSocket('ws://localhost:3000');
+        ws = new WebSocket('wss://radioenlace.onrender.com');
 
         ws.onopen = () => {
           console.log("Conectado al servidor WebSocket");
