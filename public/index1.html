@@ -42,6 +42,15 @@
           createAndSendOffer(username); // Llama a la función para enviar la oferta inicial
         };
 
+        ws.onclose = () => {
+          console.log("Desconectado del servidor WebSocket");
+          alert("La conexión con el servidor se ha perdido.");
+        };
+
+        ws.onerror = (error) => {
+          console.error("Error en la conexión WebSocket:", error);
+        };
+
         // Escuchar mensajes de señalización del servidor
         ws.onmessage = async (message) => {
           const data = JSON.parse(message.data);
@@ -62,7 +71,13 @@
 
     async function createAndSendOffer(username) {
       // Crear una conexión de par para enviar la oferta
-      const pc = new RTCPeerConnection();
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' } // Puedes agregar más servidores STUN si es necesario
+        ]
+      });
+      
       peerConnections[username] = pc; // Usar el nombre de usuario como ID
 
       // Agregar el micrófono a RTCPeerConnection
