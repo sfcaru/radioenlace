@@ -15,26 +15,37 @@
     let peerConnection;
 
     const userId = location.pathname.split('/').pop().split('.').shift();
+    const audioBitrate = 48000; // 16 etc kbps
+    const audioSampleRate = 44100; // kHz
+    const audioChannels = 2; // Estéreo
 
     async function startTransmission() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ 
+          
+
+
           audio: {
             mandatory: {
                 'OfferToReceiveAudio': true,
                 'OfferToReceiveVideo': false,
-                autoGainControl: false,
+                bitrate: audioBitrate,
+                sampleRate: audioSampleRate,
+                channelCount: audioChannels,
+                //'codec': 'aac' // Especificar AAC como codec obligatorio
+
+		            autoGainControl: false,
                 echoCancellation: false,
                 noiseSuppression: false,
                 googAutoGainControl: false
-                  },
-       
-                }, 
+            },
+
+          },
           video: false 
         });
         console.log("Micrófono capturado");
 
-        socket = io("https://radioenlace.onrender.com");
+        socket = io("http://localhost:3000");
 
         socket.on('connect', () => {
           console.log("Conectado al servidor Socket.IO con ID:", socket.id);
@@ -71,7 +82,30 @@
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       });
 
-      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+      localStream.getTracks().forEach(track => {
+        if (track.kind === 'audio') {
+          const sender = peerConnection.addTrack(track, localStream);
+          console.log('Frecuencia de muestreo del audio:', track.getSettings().sampleRate);
+
+          // Configurar parámetros de codificación de audio (Codecs Opus)
+          const parameters = sender.getParameters();
+          if (!parameters.encodings) {
+            parameters.encodings = [{}];
+          }
+          parameters.encodings[0].maxBitrate = audioBitrate;
+          parameters.encodings[0].codecPayloadType = 111;
+          parameters.encodings[0].sampleRate = 16000;
+
+          sender.setParameters(parameters); 
+          console.log('Parámetros de codificación:', parameters); 
+      console.log('maxBitrate:', parameters.encodings[0].maxBitrate);
+      console.log('codecPayloadType:', parameters.encodings[0].codecPayloadType);
+      console.log('codecPayloadType:', parameters.encodings[0].sampleRate);
+        }
+      });
+
+
+
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
@@ -84,33 +118,14 @@
       };
 
       const offer = await peerConnection.createOffer();
-      offer.sdp = setOpusBitrate(offer.sdp, 18000);
       await peerConnection.setLocalDescription(offer);
 
       socket.emit('signal', {
         type: 'offer',
         id: userId,
-        offer: peerConnection.localDescription
+        offer: offer
       });
     }
-    
-    function setOpusBitrate(sdp, bitrate) {
-  const lines = sdp.split('\n');
-  const modifiedLines = lines.map(line => {
-    // Encuentra el códec Opus en el SDP y establece el parámetro "maxaveragebitrate"
-    if (line.startsWith('a=fmtp') && line.includes('opus')) {
-      if (line.includes('maxaveragebitrate')) {
-        return line.replace(/maxaveragebitrate=\d+/, `maxaveragebitrate=${bitrate}`);
-      } else {
-        return `${line};maxaveragebitrate=${bitrate}`;
-      }
-    }
-    return line;
-  });
-  return modifiedLines.join('\n');
-}
-
-
   </script>
 </body>
 </html>
