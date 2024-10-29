@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Receptor de Audio Multiusuario</title>
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+  <style>
+    .user-audio {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 300px;
+    }
+    .audio-container {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Receptor de Audio Multiusuario</h2>
+  <div id="audio-container" class="audio-container"></div>
+
+  <script>
+    const socket = io("https://radioenlace.onrender.com");
+    const peerConnections = {};
+
+    socket.on('connect', () => {
+      console.log("Conectado al servidor Socket.IO");
+      
+      // Notificar a los emisores para que reenvíen sus ofertas
+      socket.emit('reconnect-request');
+    });
+
+    socket.on('signal', async (data) => {
+      if (data.type === 'offer') {
+        const userId = data.id;
+        console.log("Oferta recibida de:", userId);
+
+        let userAudioContainer = document.getElementById(`audio-${userId}`);
+        if (!userAudioContainer) {
+          userAudioContainer = document.createElement('div');
+          userAudioContainer.className = 'user-audio';
+          userAudioContainer.id = `audio-${userId}`;
+          
+          const userTitle = document.createElement('h3');
+          userTitle.innerText = `Audio de ${userId}`;
+          userAudioContainer.appendChild(userTitle);
+
+          const audioElement = document.createElement('audio');
+          audioElement.controls = true;
+          audioElement.autoplay = false;
+          audioElement.muted = false;
+          
+          audioElement.id = `audio-player-${userId}`;
+          userAudioContainer.appendChild(audioElement);
+
+          document.getElementById('audio-container').appendChild(userAudioContainer);
+        }
+
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        pc.ontrack = (event) => {
+          const audioElement = document.getElementById(`audio-player-${userId}`);
+          audioElement.srcObject = event.streams[0];
+          console.log(`Pista de audio añadida al reproductor de ${userId}`);
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('signal', {
+              type: 'candidate',
+              id: userId,
+              candidate: event.candidate
+            });
+          }
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        peerConnections[userId] = pc;
+
+        socket.emit('signal', {
+          type: 'answer',
+          id: userId,
+          answer: answer
+        });
+      } else if (data.type === 'candidate' && peerConnections[data.id]) {
+        await peerConnections[data.id].addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log("Conexión Socket.IO cerrada");
+      Object.values(peerConnections).forEach(pc => pc.close());
+    });
+  </script>
+</body>
+</html>

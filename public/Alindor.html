@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Emisor de Audio</title>
+  <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Emisor de Audio - Usuario</h1>
+  <button onclick="startTransmission()">Iniciar Transmisión</button>
+
+  <script>
+    let localStream;
+    let socket;
+    let peerConnection;
+
+    const userId = location.pathname.split('/').pop().split('.').shift();
+
+    async function startTransmission() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            mandatory: {
+                'OfferToReceiveAudio': true,
+                'OfferToReceiveVideo': false,
+                autoGainControl: false,
+                echoCancellation: false,
+                noiseSuppression: false,
+                googAutoGainControl: false
+                  },
+       
+                }, 
+          video: false 
+        });
+        console.log("Micrófono capturado");
+
+        socket = io("https://radioenlace.onrender.com");
+
+        socket.on('connect', () => {
+          console.log("Conectado al servidor Socket.IO con ID:", socket.id);
+          createAndSendOffer();
+        });
+
+        socket.on('signal', async (data) => {
+          if (data.type === 'answer' && data.id === userId) {
+            await peerConnection.setRemoteDescription(data.answer);
+            console.log("Respuesta establecida");
+          } else if (data.type === 'candidate' && data.id === userId) {
+            await peerConnection.addIceCandidate(data.candidate);
+            console.log("Candidato ICE añadido:", data.candidate);
+          }
+        });
+
+        // Al recibir la señal de reconexión, envía una nueva oferta
+        socket.on('reconnect', () => {
+          console.log("Reconexión solicitada, enviando nueva oferta...");
+          createAndSendOffer();
+        });
+
+        socket.on('disconnect', () => {
+          console.log("Desconectado del servidor Socket.IO");
+        });
+
+      } catch (error) {
+        console.error("Error al capturar el micrófono o configurar WebRTC:", error);
+      }
+    }
+
+    async function createAndSendOffer() {
+      peerConnection = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+
+      localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('signal', {
+            type: 'candidate',
+            id: userId,
+            candidate: event.candidate
+          });
+        }
+      };
+
+      const offer = await peerConnection.createOffer();
+      offer.sdp = setOpusBitrate(offer.sdp, 18000);
+      await peerConnection.setLocalDescription(offer);
+
+      socket.emit('signal', {
+        type: 'offer',
+        id: userId,
+        offer: peerConnection.localDescription
+      });
+    }
+    
+    function setOpusBitrate(sdp, bitrate) {
+  const lines = sdp.split('\n');
+  const modifiedLines = lines.map(line => {
+    // Encuentra el códec Opus en el SDP y establece el parámetro "maxaveragebitrate"
+    if (line.startsWith('a=fmtp') && line.includes('opus')) {
+      if (line.includes('maxaveragebitrate')) {
+        return line.replace(/maxaveragebitrate=\d+/, `maxaveragebitrate=${bitrate}`);
+      } else {
+        return `${line};maxaveragebitrate=${bitrate}`;
+      }
+    }
+    return line;
+  });
+  return modifiedLines.join('\n');
+}
+
+
+  </script>
+</body>
+</html>
