@@ -45,7 +45,7 @@
         });
         console.log("Micrófono capturado");
 
-        socket = io("http://localhost:3000");
+        socket = io("https://radioenlace.onrender.com");
 
         socket.on('connect', () => {
           console.log("Conectado al servidor Socket.IO con ID:", socket.id);
