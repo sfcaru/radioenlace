@@ -1,0 +1,91 @@
+<html>
+    <head>
+        <title>Receptro Sinai</title>
+        <style>
+            body {
+    background: #1a1a2e;
+    margin: 0;
+    padding: 0;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 100vh;
+    flex-wrap: wrap;
+    flex-direction: column;
+    }
+   button {
+    margin-top: 5px;
+    padding: 5px 5px;
+    border: none;
+    background: #26263f;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 120px;
+    font-size: 1em;
+}
+    button:hover {
+      background: #0056b3;
+    }
+    .pers {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    border-bottom: 1px solid #fff;
+    padding-bottom: 30px;
+}
+iframe {
+      width: 540px;
+      height: 120px;
+      border: none;
+    }
+        </style>
+    </head>
+<body>
+    
+
+    <div>
+    <h1>SUITIN</h1>
+    <div class="pers">
+        <iframe id="player1"  src="http://suitin.netbird.cloud:8889/suitin/"></iframe>
+        <button onclick="reloadIframe('player1', 'http://suitin.netbird.cloud:8889/suitin/')">🔁 Actualizar</button>
+    </div>
+    </div>
+
+    <div>
+    <h1>ALINDOR</h1>
+    <div class="pers">
+        <iframe id="player2"  src="http://alindor.netbird.cloud:8889/alindor/"></iframe>
+        <button onclick="reloadIframe('player2', 'http://alindor.netbird.cloud:8889/alindor/')">🔁 Actualizar</button>
+    </div>
+    </div>
+
+    <div>
+    <h1>Urnas de Fuego</h1>
+    <div class="pers">
+        <iframe id="player2"  src="http://urnas-de-fuego.netbird.cloud:8889/UrnasDeFuego/"></iframe>
+        <button onclick="reloadIframe('player2', 'http://urnas-de-fuego.netbird.cloud:8889/UrnasDeFuego/')">🔁 Actualizar</button>
+    </div>
+    </div>
+    
+
+    <div>
+    <h1>OSCAR LINO</h1>
+    <div class="pers">
+        <iframe id="player3" src="http://lino.netbird.cloud:8889/lino/"></iframe>
+        <button onclick="reloadIframe('player3', 'http://lino.netbird.cloud:8889/lino/')">🔁 Actualiza</button>
+    
+    </div>
+    </div>
+
+
+<script>
+    function reloadIframe(iframeId, url) {
+      const iframe = document.getElementById(iframeId);
+      iframe.src = url;
+    }
+  </script>
+  </body>
+  </html>
